@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Trash2, Settings, Copy, Check, Code, Plus, X, Search } from 'lucide-react';
+import { Trash2, Settings, Copy, Check, Code, Plus, X, Search, Menu } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface TestResult {
@@ -27,6 +27,9 @@ interface TabItem {
 }
 
 export default function PostmanDashboard() {
+  // Mobile Sidebar Drawer Toggle
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
   // Tabs State
   const [tabs, setTabs] = useState<TabItem[]>([
     {
@@ -187,7 +190,7 @@ export default function PostmanDashboard() {
 
     return (
       <pre
-        className="leading-relaxed font-mono"
+        className="leading-relaxed font-mono whitespace-pre-wrap break-all"
         dangerouslySetInnerHTML={{ __html: highlighted }}
       />
     );
@@ -392,6 +395,8 @@ export default function PostmanDashboard() {
       headers: parsedHeaders,
       body: item.body || '',
     });
+
+    setMobileSidebarOpen(false); // Close sidebar on mobile select
   };
 
   // Filter List Base on Search Query
@@ -406,10 +411,28 @@ export default function PostmanDashboard() {
   );
 
   return (
-    <div className="flex h-screen bg-slate-950 text-white font-sans relative overflow-hidden">
-      {/* 1. SIDEBAR */}
-      <div className="w-64 bg-slate-900 border-r border-slate-800 p-4 flex flex-col z-10">
-        <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
+    <div className="flex flex-col md:flex-row h-screen bg-slate-950 text-white font-sans relative overflow-x-hidden">
+      
+      {/* MOBILE TOP BAR */}
+      <div className="flex md:hidden items-center justify-between p-3 bg-slate-900 border-b border-slate-800 z-20">
+        <h2 className="text-sm font-bold flex items-center gap-2">
+          <span>⚡</span> API Tester
+        </h2>
+        <button
+          onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+          className="p-1.5 text-slate-300 hover:text-white bg-slate-800 rounded"
+        >
+          {mobileSidebarOpen ? <X size={20} /> : <Menu size={20} />}
+        </button>
+      </div>
+
+      {/* 1. SIDEBAR (Responsive Mobile Drawer & Desktop Side Menu) */}
+      <div
+        className={`${
+          mobileSidebarOpen ? 'block fixed inset-0 top-[49px] z-30' : 'hidden'
+        } md:block md:static w-full md:w-64 bg-slate-900 border-r border-slate-800 p-4 flex flex-col z-10`}
+      >
+        <h2 className="hidden md:flex text-lg font-bold mb-3 items-center gap-2">
           <span>⚡</span> API Tester
         </h2>
 
@@ -485,7 +508,7 @@ export default function PostmanDashboard() {
                         >
                           {item.method}
                         </span>
-                        <span className="truncate max-w-[90px]">{item.url}</span>
+                        <span className="truncate max-w-[100px] md:max-w-[90px]">{item.url}</span>
                       </div>
 
                       <div className="flex items-center gap-1">
@@ -562,7 +585,7 @@ export default function PostmanDashboard() {
               key={tab.id}
               onClick={() => setActiveTabId(tab.id)}
               whileTap={{ scale: 0.98 }}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-t text-xs font-medium cursor-pointer border-t border-x transition-all max-w-[160px] relative ${
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-t text-xs font-medium cursor-pointer border-t border-x transition-all shrink-0 max-w-[160px] relative ${
                 activeTabId === tab.id
                   ? 'bg-slate-950 border-slate-800 text-white'
                   : 'bg-slate-900 border-transparent text-slate-400 hover:text-slate-200'
@@ -595,88 +618,114 @@ export default function PostmanDashboard() {
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             onClick={handleAddNewTab}
-            className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition mb-1"
+            className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition mb-1 shrink-0"
             title="New Tab"
           >
             <Plus size={16} />
           </motion.button>
         </div>
 
-        <div className="p-6 flex-1 flex flex-col">
+        <div className="p-4 md:p-6 flex-1 flex flex-col">
           {/* Environment & Code Button Bar */}
-          <div className="flex justify-between items-center mb-3">
+          <div className="flex flex-wrap justify-between items-center gap-2 mb-3">
             <span className="text-xs text-slate-400 font-medium">Request Builder</span>
-            <div className="flex gap-2">
+            <div className="flex gap-2 w-full sm:w-auto justify-end">
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setShowCodeModal(true)}
-                className="flex items-center gap-1.5 text-xs bg-slate-900 hover:bg-slate-800 border border-slate-800 px-3 py-1.5 rounded text-emerald-400 font-medium transition shadow"
+                className="flex items-center gap-1.5 text-xs bg-slate-900 hover:bg-slate-800 border border-slate-800 px-2.5 py-1.5 rounded text-emerald-400 font-medium transition shadow"
               >
                 <Code size={13} />
-                <span>Generate Code</span>
+                <span>Code</span>
               </motion.button>
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setShowEnvModal(true)}
-                className="flex items-center gap-1.5 text-xs bg-slate-900 hover:bg-slate-800 border border-slate-800 px-3 py-1.5 rounded text-indigo-400 font-medium transition shadow"
+                className="flex items-center gap-1.5 text-xs bg-slate-900 hover:bg-slate-800 border border-slate-800 px-2.5 py-1.5 rounded text-indigo-400 font-medium transition shadow"
               >
                 <Settings size={13} />
-                <span>Environments ({envVars.length})</span>
+                <span>Env ({envVars.length})</span>
               </motion.button>
             </div>
           </div>
 
-          {/* URL Input Area */}
-          <div className="flex gap-2 mb-6">
-            <select
-              value={currentTab.method}
-              onChange={(e) => updateCurrentTab({ method: e.target.value })}
-              className="bg-slate-800 border border-slate-700 text-white text-sm rounded px-3 py-2 outline-none font-bold text-blue-400 cursor-pointer"
-            >
-              <option value="GET">GET</option>
-              <option value="POST">POST</option>
-              <option value="PUT">PUT</option>
-              <option value="DELETE">DELETE</option>
-            </select>
+          {/* URL Input Area (Stacked for Mobile) */}
+          <div className="flex flex-col sm:flex-row gap-2 mb-6">
+            <div className="flex gap-2 w-full sm:w-auto">
+              <select
+                value={currentTab.method}
+                onChange={(e) => updateCurrentTab({ method: e.target.value })}
+                className="bg-slate-800 border border-slate-700 text-white text-sm rounded px-3 py-2 outline-none font-bold text-blue-400 cursor-pointer w-28 sm:w-auto"
+              >
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="PUT">PUT</option>
+                <option value="DELETE">DELETE</option>
+              </select>
+
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={handleSendRequest}
+                disabled={loading}
+                className="sm:hidden flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2 rounded text-sm transition disabled:opacity-50 shadow-lg shadow-indigo-600/20"
+              >
+                {loading ? 'Sending...' : 'Send'}
+              </motion.button>
+            </div>
 
             <input
               type="text"
               placeholder="e.g. {{baseUrl}}/todos/1"
               value={currentTab.url}
               onChange={(e) => updateCurrentTab({ url: e.target.value })}
-              className="flex-1 bg-slate-900 border border-slate-800 text-white text-sm rounded px-4 py-2 outline-none focus:border-blue-500 font-mono transition"
+              className="w-full flex-1 bg-slate-900 border border-slate-800 text-white text-sm rounded px-4 py-2 outline-none focus:border-blue-500 font-mono transition"
             />
 
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={handleSendRequest}
-              disabled={loading}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-6 py-2 rounded text-sm transition disabled:opacity-50 shadow-lg shadow-indigo-600/20"
-            >
-              {loading ? 'Sending...' : 'Send'}
-            </motion.button>
+            <div className="hidden sm:flex gap-2">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={handleSendRequest}
+                disabled={loading}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-6 py-2 rounded text-sm transition disabled:opacity-50 shadow-lg shadow-indigo-600/20"
+              >
+                {loading ? 'Sending...' : 'Send'}
+              </motion.button>
 
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => {
+                  if (!requestName) setRequestName(currentTab.name !== 'Untitled Request' ? currentTab.name : '');
+                  setShowSaveModal(true);
+                }}
+                className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-4 py-2 rounded text-sm transition"
+              >
+                Save
+              </motion.button>
+            </div>
+
+            {/* Mobile Save Button */}
             <motion.button
-              whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
               onClick={() => {
                 if (!requestName) setRequestName(currentTab.name !== 'Untitled Request' ? currentTab.name : '');
                 setShowSaveModal(true);
               }}
-              className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-4 py-2 rounded text-sm transition"
+              className="sm:hidden w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-4 py-2 rounded text-sm transition"
             >
-              Save
+              Save Request
             </motion.button>
           </div>
 
-          {/* Dynamic Request Builder & Response Area */}
-          <div className="flex-1 grid grid-cols-2 gap-6">
+          {/* Dynamic Request Builder & Response Area (Stacked on Mobile) */}
+          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Request Builder Box */}
-            <div className="bg-slate-900 rounded border border-slate-800 p-4 flex flex-col">
-              <div className="flex border-b border-slate-800 mb-4 gap-4 text-xs font-medium relative">
+            <div className="bg-slate-900 rounded border border-slate-800 p-4 flex flex-col min-h-[250px]">
+              <div className="flex border-b border-slate-800 mb-4 gap-4 text-xs font-medium relative overflow-x-auto">
                 {[
                   { id: 'headers', label: `Headers (${currentTab.headers.length})` },
                   { id: 'auth', label: `Auth ${currentTab.authType !== 'none' ? '•' : ''}` },
@@ -686,7 +735,7 @@ export default function PostmanDashboard() {
                   <button
                     key={tab.id}
                     onClick={() => updateCurrentTab({ activeTab: tab.id as any })}
-                    className={`pb-2 relative transition-colors ${
+                    className={`pb-2 relative transition-colors whitespace-nowrap ${
                       currentTab.activeTab === tab.id ? 'text-indigo-400 font-semibold' : 'text-slate-400'
                     }`}
                   >
@@ -709,7 +758,7 @@ export default function PostmanDashboard() {
                     className="h-full flex flex-col"
                   >
                     {currentTab.activeTab === 'headers' && (
-                      <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+                      <div className="flex-1 overflow-y-auto space-y-2 pr-1 max-h-48 md:max-h-none">
                         {currentTab.headers.map((h, idx) => (
                           <div key={idx} className="flex gap-2">
                             <input
@@ -717,16 +766,16 @@ export default function PostmanDashboard() {
                               placeholder="Key"
                               value={h.key}
                               onChange={(e) => handleHeaderChange(idx, e.target.value, h.value)}
-                              className="flex-1 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs outline-none focus:border-slate-700"
+                              className="w-1/2 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs outline-none focus:border-slate-700"
                             />
                             <input
                               type="text"
                               placeholder="Value"
                               value={h.value}
                               onChange={(e) => handleHeaderChange(idx, h.key, e.target.value)}
-                              className="flex-1 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs outline-none focus:border-slate-700"
+                              className="w-1/2 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs outline-none focus:border-slate-700"
                             />
-                            <button onClick={() => removeHeaderRow(idx)} className="text-red-400 hover:text-red-300 text-xs px-2">
+                            <button onClick={() => removeHeaderRow(idx)} className="text-red-400 hover:text-red-300 text-xs px-1">
                               ✕
                             </button>
                           </div>
@@ -760,7 +809,7 @@ export default function PostmanDashboard() {
                               value={currentTab.token}
                               onChange={(e) => updateCurrentTab({ token: e.target.value })}
                               placeholder="Paste JWT token..."
-                              className="w-full h-32 bg-slate-950 border border-slate-800 rounded p-2 font-mono text-xs outline-none text-yellow-300"
+                              className="w-full h-28 bg-slate-950 border border-slate-800 rounded p-2 font-mono text-xs outline-none text-yellow-300"
                             />
                           </div>
                         )}
@@ -768,12 +817,12 @@ export default function PostmanDashboard() {
                     )}
 
                     {currentTab.activeTab === 'body' && (
-                      <div className="flex-1 flex flex-col">
+                      <div className="flex-1 flex flex-col min-h-[120px]">
                         <textarea
                           value={currentTab.body}
                           onChange={(e) => updateCurrentTab({ body: e.target.value })}
                           placeholder='{\n  "key": "value"\n}'
-                          className="w-full h-full bg-slate-950 border border-slate-800 rounded p-3 text-xs font-mono text-emerald-400 outline-none focus:border-slate-700 transition"
+                          className="w-full min-h-[120px] md:h-full bg-slate-950 border border-slate-800 rounded p-3 text-xs font-mono text-emerald-400 outline-none focus:border-slate-700 transition"
                         />
                       </div>
                     )}
@@ -814,14 +863,14 @@ export default function PostmanDashboard() {
             </div>
 
             {/* Response Box */}
-            <div className="bg-slate-900 rounded border border-slate-800 p-4 flex flex-col">
-              <div className="flex justify-between items-center mb-3 min-h-[32px]">
-                <div className="flex items-center gap-3">
+            <div className="bg-slate-900 rounded border border-slate-800 p-4 flex flex-col min-h-[250px]">
+              <div className="flex flex-wrap justify-between items-center gap-2 mb-3 min-h-[32px]">
+                <div className="flex items-center gap-2">
                   <h3 className="text-sm font-semibold">Response</h3>
 
                   {/* Response Tabs */}
                   {currentTab.response && (
-                    <div className="flex text-xs bg-slate-950 p-0.5 rounded border border-slate-800">
+                    <div className="flex text-xs bg-slate-950 p-0.5 rounded border border-slate-800 overflow-x-auto">
                       <button
                         onClick={() => updateCurrentTab({ responseTab: 'body' })}
                         className={`px-2 py-0.5 rounded transition ${
@@ -851,7 +900,7 @@ export default function PostmanDashboard() {
                               : 'text-slate-400'
                           }`}
                         >
-                          <span>Test Results</span>
+                          <span>Tests</span>
                           <span className="text-[10px] px-1 bg-indigo-500/20 text-indigo-300 rounded-full font-bold">
                             {currentTab.response.testResults.filter((r: TestResult) => r.passed).length}/
                             {currentTab.response.testResults.length}
@@ -863,9 +912,9 @@ export default function PostmanDashboard() {
                 </div>
 
                 {currentTab.response && (
-                  <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex items-center gap-3 text-xs">
+                  <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex items-center gap-2 text-xs">
                     <span
-                      className={`px-2 py-0.5 rounded font-bold text-[11px] ${
+                      className={`px-2 py-0.5 rounded font-bold text-[10px] ${
                         currentTab.response.statusCode >= 200 && currentTab.response.statusCode < 300
                           ? 'bg-green-500/10 text-green-400 border border-green-500/20'
                           : currentTab.response.statusCode >= 400
@@ -873,11 +922,10 @@ export default function PostmanDashboard() {
                           : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
                       }`}
                     >
-                      {currentTab.response.statusCode}{' '}
-                      {currentTab.response.statusCode === 200 ? 'OK' : ''}
+                      {currentTab.response.statusCode}
                     </span>
 
-                    <span className="text-slate-400 font-mono">
+                    <span className="text-slate-400 font-mono text-[11px]">
                       {currentTab.response.responseTime} ms
                     </span>
 
@@ -887,14 +935,13 @@ export default function PostmanDashboard() {
                       title="Copy Response"
                     >
                       {copied ? <Check size={12} className="text-green-400" /> : <Copy size={12} />}
-                      <span>{copied ? 'Copied' : 'Copy'}</span>
                     </button>
                   </motion.div>
                 )}
               </div>
 
               {/* Response Content View */}
-              <div className="flex-1 bg-slate-950 border border-slate-800 rounded p-3 overflow-y-auto font-mono text-xs relative">
+              <div className="flex-1 bg-slate-950 border border-slate-800 rounded p-3 overflow-y-auto font-mono text-xs relative max-h-60 md:max-h-none">
                 <AnimatePresence mode="wait">
                   {!currentTab.response ? (
                     <motion.p
@@ -916,13 +963,12 @@ export default function PostmanDashboard() {
                     >
                       {currentTab.responseTab === 'body' && renderPrettyJson(currentTab.response.body)}
 
-                      {/* FIXED SAFE HEADER RENDERING 👇 */}
                       {currentTab.responseTab === 'headers' && (
                         <div className="space-y-1">
                           {currentTab.response.headers &&
                           Object.keys(currentTab.response.headers).length > 0 ? (
                             Object.entries(currentTab.response.headers).map(([k, v]: any) => (
-                              <div key={k} className="flex gap-2">
+                              <div key={k} className="flex gap-2 text-xs break-all">
                                 <span className="text-indigo-400 font-semibold">{k}:</span>
                                 <span className="text-slate-300">
                                   {typeof v === 'object' && v !== null
@@ -992,20 +1038,20 @@ export default function PostmanDashboard() {
         </div>
       </div>
 
-      {/* Code Snippet Modal with Backdrop Animation */}
+      {/* Code Snippet Modal */}
       <AnimatePresence>
         {showCodeModal && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50"
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-slate-900 border border-slate-800 rounded-lg p-6 w-[550px] shadow-2xl"
+              className="bg-slate-900 border border-slate-800 rounded-lg p-5 w-full max-w-[550px] shadow-2xl"
             >
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-sm font-bold text-white flex items-center gap-2">
@@ -1018,16 +1064,16 @@ export default function PostmanDashboard() {
               </div>
 
               {/* Language Selector */}
-              <div className="flex border-b border-slate-800 mb-4 gap-2 text-xs">
+              <div className="flex border-b border-slate-800 mb-4 gap-2 text-xs overflow-x-auto">
                 {[
                   { id: 'curl', label: 'cURL' },
-                  { id: 'javascript', label: 'JavaScript (Fetch)' },
-                  { id: 'python', label: 'Python (Requests)' },
+                  { id: 'javascript', label: 'JS (Fetch)' },
+                  { id: 'python', label: 'Python' },
                 ].map((lang) => (
                   <button
                     key={lang.id}
                     onClick={() => setCodeLanguage(lang.id as any)}
-                    className={`pb-2 px-2 font-medium transition-colors ${
+                    className={`pb-2 px-2 font-medium transition-colors whitespace-nowrap ${
                       codeLanguage === lang.id
                         ? 'border-b-2 border-emerald-500 text-emerald-400'
                         : 'text-slate-400'
@@ -1039,7 +1085,7 @@ export default function PostmanDashboard() {
               </div>
 
               {/* Code Box */}
-              <div className="relative bg-slate-950 border border-slate-800 rounded p-4 mb-4 font-mono text-xs text-emerald-300 overflow-x-auto max-h-64">
+              <div className="relative bg-slate-950 border border-slate-800 rounded p-3 mb-4 font-mono text-xs text-emerald-300 overflow-x-auto max-h-64">
                 <button
                   onClick={handleCopyCode}
                   className="absolute top-2 right-2 bg-slate-800 hover:bg-slate-700 text-slate-300 p-1.5 rounded transition flex items-center gap-1 text-[11px]"
@@ -1070,13 +1116,13 @@ export default function PostmanDashboard() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50"
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-slate-900 border border-slate-800 rounded-lg p-6 w-[480px] shadow-2xl"
+              className="bg-slate-900 border border-slate-800 rounded-lg p-5 w-full max-w-[480px] shadow-2xl"
             >
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-sm font-bold text-white">Environment Variables</h3>
@@ -1090,14 +1136,14 @@ export default function PostmanDashboard() {
                   <div key={idx} className="flex gap-2">
                     <input
                       type="text"
-                      placeholder="VARIABLE (e.g. baseUrl)"
+                      placeholder="VARIABLE"
                       value={v.key}
                       onChange={(e) => {
                         const updated = [...envVars];
                         updated[idx].key = e.target.value;
                         setEnvVars(updated);
                       }}
-                      className="flex-1 bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-xs text-yellow-400 font-mono outline-none"
+                      className="w-1/2 bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-xs text-yellow-400 font-mono outline-none"
                     />
                     <input
                       type="text"
@@ -1108,11 +1154,11 @@ export default function PostmanDashboard() {
                         updated[idx].value = e.target.value;
                         setEnvVars(updated);
                       }}
-                      className="flex-1 bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-xs text-white font-mono outline-none"
+                      className="w-1/2 bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-xs text-white font-mono outline-none"
                     />
                     <button
                       onClick={() => setEnvVars(envVars.filter((_, i) => i !== idx))}
-                      className="text-red-400 text-xs px-2 hover:bg-slate-800 rounded"
+                      className="text-red-400 text-xs px-1 hover:bg-slate-800 rounded"
                     >
                       ✕
                     </button>
@@ -1146,13 +1192,13 @@ export default function PostmanDashboard() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50"
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-slate-900 border border-slate-800 rounded-lg p-6 w-96 shadow-2xl"
+              className="bg-slate-900 border border-slate-800 rounded-lg p-5 w-full max-w-sm shadow-2xl"
             >
               <h3 className="text-sm font-bold mb-3">Save Request</h3>
               <input
