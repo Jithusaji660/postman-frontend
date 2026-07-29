@@ -79,28 +79,26 @@ export default function PostmanDashboard() {
   const [codeLanguage, setCodeLanguage] = useState<'curl' | 'javascript' | 'python'>('curl');
   const [codeCopied, setCodeCopied] = useState(false);
 
-  // Fetch History & Collections Safe Fetcher
-  const fetchHistory = async () => {
-    try {
-      const res = await axios.get('http://localhost:8080/api/proxy/history');
-      setHistoryList(res.data);
-    } catch {
-      // Quiet fail if backend is not running on Netlify
-    }
-  };
-
-  const fetchCollections = async () => {
-    try {
-      const res = await axios.get('http://localhost:8080/api/collections');
-      setCollectionList(res.data);
-    } catch {
-      // Quiet fail if backend is not running on Netlify
-    }
-  };
-
+  // --- LOCALSTORAGE DATA HANDLERS ---
   useEffect(() => {
-    fetchHistory();
-    fetchCollections();
+    // Load History and Collections from localStorage when component mounts
+    const savedHistory = localStorage.getItem('api_tester_history');
+    if (savedHistory) {
+      try {
+        setHistoryList(JSON.parse(savedHistory));
+      } catch (e) {
+        console.error('Failed to parse history from localStorage', e);
+      }
+    }
+
+    const savedCollections = localStorage.getItem('api_tester_collections');
+    if (savedCollections) {
+      try {
+        setCollectionList(JSON.parse(savedCollections));
+      } catch (e) {
+        console.error('Failed to parse collections from localStorage', e);
+      }
+    }
   }, []);
 
   // Update Current Tab Helper Function
@@ -248,24 +246,18 @@ export default function PostmanDashboard() {
   };
 
   // Delete Handlers
-  const handleDeleteHistory = async (id: number, e: React.MouseEvent) => {
+  const handleDeleteHistory = (id: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    try {
-      await axios.delete(`http://localhost:8080/api/proxy/history/${id}`);
-      setHistoryList((prev) => prev.filter((item) => item.id !== id));
-    } catch (err) {
-      console.error('Failed to delete history item:', err);
-    }
+    const updated = historyList.filter((item) => item.id !== id);
+    setHistoryList(updated);
+    localStorage.setItem('api_tester_history', JSON.stringify(updated));
   };
 
-  const handleDeleteCollection = async (id: number, e: React.MouseEvent) => {
+  const handleDeleteCollection = (id: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    try {
-      await axios.delete(`http://localhost:8080/api/collections/${id}`);
-      setCollectionList((prev) => prev.filter((item) => item.id !== id));
-    } catch (err) {
-      console.error('Failed to delete collection item:', err);
-    }
+    const updated = collectionList.filter((item) => item.id !== id);
+    setCollectionList(updated);
+    localStorage.setItem('api_tester_collections', JSON.stringify(updated));
   };
 
   // Header Handlers
@@ -283,7 +275,7 @@ export default function PostmanDashboard() {
       headers: currentTab.headers.filter((_, i) => i !== index),
     });
 
-  // Send Request (Client-Side Direct Call with Proxy Fallback)
+  // Send Request
   const handleSendRequest = async () => {
     setLoading(true);
     updateCurrentTab({ response: null });
@@ -318,90 +310,86 @@ export default function PostmanDashboard() {
 
     const startTime = Date.now();
 
-    // 1. First try Proxy (Local Spring Boot Server)
     try {
-      const res = await axios.post('http://localhost:8080/api/proxy/execute', {
+      const res = await axios({
         method: currentTab.method,
         url: processedUrl,
         headers: headerObject,
-        body: processedBody,
-        tests: currentTab.tests || [],
+        data: processedBody,
       });
 
-      const autoResponseTab = res.data.testResults && res.data.testResults.length > 0 ? 'tests' : 'body';
-      updateCurrentTab({
-        response: res.data,
-        responseTab: autoResponseTab,
-      });
-      fetchHistory();
-    } catch {
-      // 2. If Backend Proxy fails (e.g. deployed on Netlify), run directly from Client
-      try {
-        const res = await axios({
-          method: currentTab.method,
-          url: processedUrl,
-          headers: headerObject,
-          data: processedBody,
-        });
+      const responseTime = Date.now() - startTime;
 
-        const responseTime = Date.now() - startTime;
-
-        // Run local assertion checks for Client-side requests
-        const testResults: TestResult[] = [];
-        if ((currentTab.tests || []).includes('STATUS_200')) {
-          testResults.push({
-            testName: 'Status Code is 200 OK',
-            passed: res.status === 200,
-            message: `Received status ${res.status}`,
-          });
-        }
-        if ((currentTab.tests || []).includes('RESPONSE_TIME_500MS')) {
-          testResults.push({
-            testName: 'Response time is less than 500ms',
-            passed: responseTime < 500,
-            message: `Response time was ${responseTime}ms`,
-          });
-        }
-        if ((currentTab.tests || []).includes('HAS_BODY')) {
-          testResults.push({
-            testName: 'Response body is present',
-            passed: Boolean(res.data),
-            message: res.data ? 'Body present' : 'Body missing',
-          });
-        }
-
-        const autoTab = testResults.length > 0 ? 'tests' : 'body';
-
-        updateCurrentTab({
-          response: {
-            statusCode: res.status,
-            responseTime,
-            headers: res.headers,
-            body: res.data,
-            testResults,
-          },
-          responseTab: autoTab,
-        });
-      } catch (err: any) {
-        const responseTime = Date.now() - startTime;
-        updateCurrentTab({
-          response: {
-            statusCode: err.response?.status || 500,
-            responseTime,
-            headers: err.response?.headers || {},
-            body: err.response?.data || err.message || 'Error executing request',
-            testResults: [],
-          },
-          responseTab: 'body',
+      // Assertion checks
+      const testResults: TestResult[] = [];
+      if ((currentTab.tests || []).includes('STATUS_200')) {
+        testResults.push({
+          testName: 'Status Code is 200 OK',
+          passed: res.status === 200,
+          message: `Received status ${res.status}`,
         });
       }
+      if ((currentTab.tests || []).includes('RESPONSE_TIME_500MS')) {
+        testResults.push({
+          testName: 'Response time is less than 500ms',
+          passed: responseTime < 500,
+          message: `Response time was ${responseTime}ms`,
+        });
+      }
+      if ((currentTab.tests || []).includes('HAS_BODY')) {
+        testResults.push({
+          testName: 'Response body is present',
+          passed: Boolean(res.data),
+          message: res.data ? 'Body present' : 'Body missing',
+        });
+      }
+
+      const autoTab = testResults.length > 0 ? 'tests' : 'body';
+
+      updateCurrentTab({
+        response: {
+          statusCode: res.status,
+          responseTime,
+          headers: res.headers,
+          body: res.data,
+          testResults,
+        },
+        responseTab: autoTab,
+      });
+
+      // Save to History (LocalStorage)
+      const newHistoryItem = {
+        id: Date.now(),
+        method: currentTab.method,
+        url: processedUrl,
+        responseTime,
+        headers: JSON.stringify(headerObject),
+        body: currentTab.body,
+      };
+
+      const newHistoryList = [newHistoryItem, ...historyList];
+      setHistoryList(newHistoryList);
+      localStorage.setItem('api_tester_history', JSON.stringify(newHistoryList));
+
+    } catch (err: any) {
+      const responseTime = Date.now() - startTime;
+      updateCurrentTab({
+        response: {
+          statusCode: err.response?.status || 500,
+          responseTime,
+          headers: err.response?.headers || {},
+          body: err.response?.data || err.message || 'Error executing request',
+          testResults: [],
+        },
+        responseTab: 'body',
+      });
     } finally {
       setLoading(false);
     }
   };
 
   // Save Collection Handler
-  const handleSaveToCollection = async () => {
+  const handleSaveToCollection = () => {
     if (!requestName.trim() || !currentTab.url.trim()) {
       alert("Please enter a Request Name and URL");
       return;
@@ -412,31 +400,22 @@ export default function PostmanDashboard() {
       if (h.key.trim() !== '') headerObject[h.key.trim()] = h.value;
     });
 
-    let bodyString = '';
-    if (currentTab.body) {
-      bodyString = typeof currentTab.body === 'object' 
-        ? JSON.stringify(currentTab.body) 
-        : currentTab.body.toString();
-    }
+    const newCollectionItem = {
+      id: Date.now(),
+      name: requestName.trim(),
+      method: currentTab.method,
+      url: currentTab.url,
+      headers: JSON.stringify(headerObject),
+      body: currentTab.body || '',
+    };
 
-    try {
-      await axios.post('http://localhost:8080/api/collections', {
-        name: requestName.trim(),
-        method: currentTab.method,
-        url: currentTab.url,
-        headers: JSON.stringify(headerObject),
-        body: bodyString,
-      });
+    const newCollectionList = [newCollectionItem, ...collectionList];
+    setCollectionList(newCollectionList);
+    localStorage.setItem('api_tester_collections', JSON.stringify(newCollectionList));
 
-      updateCurrentTab({ name: requestName });
-      setShowSaveModal(false);
-      setRequestName('');
-      fetchCollections();
-    } catch (err: any) {
-      updateCurrentTab({ name: requestName });
-      setShowSaveModal(false);
-      setRequestName('');
-    }
+    updateCurrentTab({ name: requestName });
+    setShowSaveModal(false);
+    setRequestName('');
   };
 
   const handleSelectRequest = (item: any) => {
@@ -517,7 +496,7 @@ export default function PostmanDashboard() {
               sidebarTab === 'history' ? 'text-indigo-400' : 'text-slate-500'
             }`}
           >
-            History
+            History ({historyList.length})
             {sidebarTab === 'history' && (
               <motion.div layoutId="sidebarTabUnderline" className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500" />
             )}
