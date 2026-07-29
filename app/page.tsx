@@ -396,7 +396,7 @@ export default function PostmanDashboard() {
       body: item.body || '',
     });
 
-    setMobileSidebarOpen(false); // Close mobile menu on select
+    setMobileSidebarOpen(false); // Close sidebar on mobile select
   };
 
   // Filter List Base on Search Query
@@ -411,10 +411,10 @@ export default function PostmanDashboard() {
   );
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen md:h-screen bg-slate-950 text-white font-sans relative overflow-x-hidden w-full max-w-full">
+    <div className="flex flex-col md:flex-row h-screen bg-slate-950 text-white font-sans relative overflow-x-hidden">
       
       {/* MOBILE TOP BAR */}
-      <div className="flex md:hidden items-center justify-between p-3 bg-slate-900 border-b border-slate-800 sticky top-0 z-40 w-full">
+      <div className="flex md:hidden items-center justify-between p-3 bg-slate-900 border-b border-slate-800 z-20">
         <h2 className="text-sm font-bold flex items-center gap-2">
           <span>⚡</span> API Tester
         </h2>
@@ -429,8 +429,8 @@ export default function PostmanDashboard() {
       {/* 1. SIDEBAR (Responsive Mobile Drawer & Desktop Side Menu) */}
       <div
         className={`${
-          mobileSidebarOpen ? 'block fixed inset-0 top-[49px] bg-slate-900 z-30 p-4' : 'hidden'
-        } md:block md:static w-full md:w-64 bg-slate-900 border-r border-slate-800 p-4 flex flex-col shrink-0`}
+          mobileSidebarOpen ? 'block fixed inset-0 top-[49px] z-30' : 'hidden'
+        } md:block md:static w-full md:w-64 bg-slate-900 border-r border-slate-800 p-4 flex flex-col z-10`}
       >
         <h2 className="hidden md:flex text-lg font-bold mb-3 items-center gap-2">
           <span>⚡</span> API Tester
@@ -475,7 +475,7 @@ export default function PostmanDashboard() {
         </div>
 
         {/* List Content with Smooth AnimatePresence */}
-        <div className="flex-1 overflow-y-auto space-y-1 pr-1 max-h-[calc(100vh-160px)] md:max-h-none">
+        <div className="flex-1 overflow-y-auto space-y-1 pr-1">
           <AnimatePresence mode="wait">
             {sidebarTab === 'history' ? (
               <motion.div
@@ -508,7 +508,7 @@ export default function PostmanDashboard() {
                         >
                           {item.method}
                         </span>
-                        <span className="truncate max-w-[140px] md:max-w-[90px]">{item.url}</span>
+                        <span className="truncate max-w-[100px] md:max-w-[90px]">{item.url}</span>
                       </div>
 
                       <div className="flex items-center gap-1">
@@ -577,9 +577,9 @@ export default function PostmanDashboard() {
       </div>
 
       {/* 2. MAIN CONTENT AREA */}
-      <div className="flex-1 flex flex-col min-w-0 w-full overflow-y-auto">
+      <div className="flex-1 flex flex-col overflow-y-auto">
         {/* MULTI-TAB HEADER BAR */}
-        <div className="flex items-center bg-slate-900 border-b border-slate-800 px-2 pt-2 gap-1 overflow-x-auto w-full">
+        <div className="flex items-center bg-slate-900 border-b border-slate-800 px-2 pt-2 gap-1 overflow-x-auto">
           {tabs.map((tab) => (
             <motion.div
               key={tab.id}
@@ -625,7 +625,7 @@ export default function PostmanDashboard() {
           </motion.button>
         </div>
 
-        <div className="p-3 md:p-6 flex-1 flex flex-col w-full">
+        <div className="p-4 md:p-6 flex-1 flex flex-col">
           {/* Environment & Code Button Bar */}
           <div className="flex flex-wrap justify-between items-center gap-2 mb-3">
             <span className="text-xs text-slate-400 font-medium">Request Builder</span>
@@ -652,7 +652,7 @@ export default function PostmanDashboard() {
           </div>
 
           {/* URL Input Area (Stacked for Mobile) */}
-          <div className="flex flex-col sm:flex-row gap-2 mb-6 w-full">
+          <div className="flex flex-col sm:flex-row gap-2 mb-6">
             <div className="flex gap-2 w-full sm:w-auto">
               <select
                 value={currentTab.method}
@@ -681,7 +681,7 @@ export default function PostmanDashboard() {
               placeholder="e.g. {{baseUrl}}/todos/1"
               value={currentTab.url}
               onChange={(e) => updateCurrentTab({ url: e.target.value })}
-              className="w-full flex-1 bg-slate-900 border border-slate-800 text-white text-sm rounded px-4 py-2 outline-none focus:border-blue-500 font-mono transition min-w-0"
+              className="w-full flex-1 bg-slate-900 border border-slate-800 text-white text-sm rounded px-4 py-2 outline-none focus:border-blue-500 font-mono transition"
             />
 
             <div className="hidden sm:flex gap-2">
@@ -721,10 +721,10 @@ export default function PostmanDashboard() {
             </motion.button>
           </div>
 
-          {/* Dynamic Request Builder & Response Area */}
-          <div className="flex-1 flex flex-col md:grid md:grid-cols-2 gap-4 md:gap-6 w-full">
+          {/* Dynamic Request Builder & Response Area (Stacked on Mobile) */}
+          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Request Builder Box */}
-            <div className="bg-slate-900 rounded border border-slate-800 p-3 md:p-4 flex flex-col min-h-[200px]">
+            <div className="bg-slate-900 rounded border border-slate-800 p-4 flex flex-col min-h-[250px]">
               <div className="flex border-b border-slate-800 mb-4 gap-4 text-xs font-medium relative overflow-x-auto">
                 {[
                   { id: 'headers', label: `Headers (${currentTab.headers.length})` },
@@ -863,7 +863,7 @@ export default function PostmanDashboard() {
             </div>
 
             {/* Response Box */}
-            <div className="bg-slate-900 rounded border border-slate-800 p-3 md:p-4 flex flex-col min-h-[200px]">
+            <div className="bg-slate-900 rounded border border-slate-800 p-4 flex flex-col min-h-[250px]">
               <div className="flex flex-wrap justify-between items-center gap-2 mb-3 min-h-[32px]">
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-semibold">Response</h3>
@@ -941,7 +941,7 @@ export default function PostmanDashboard() {
               </div>
 
               {/* Response Content View */}
-              <div className="flex-1 bg-slate-950 border border-slate-800 rounded p-3 overflow-y-auto font-mono text-xs relative min-h-[140px] max-h-60 md:max-h-none">
+              <div className="flex-1 bg-slate-950 border border-slate-800 rounded p-3 overflow-y-auto font-mono text-xs relative max-h-60 md:max-h-none">
                 <AnimatePresence mode="wait">
                   {!currentTab.response ? (
                     <motion.p
