@@ -79,13 +79,13 @@ export default function PostmanDashboard() {
   const [codeLanguage, setCodeLanguage] = useState<'curl' | 'javascript' | 'python'>('curl');
   const [codeCopied, setCodeCopied] = useState(false);
 
-  // Fetch History & Collections
+  // Fetch History & Collections Safe Fetcher
   const fetchHistory = async () => {
     try {
       const res = await axios.get('http://localhost:8080/api/proxy/history');
       setHistoryList(res.data);
-    } catch (err) {
-      console.error('Failed to fetch history:', err);
+    } catch {
+      // Quiet fail if backend is not running on Netlify
     }
   };
 
@@ -93,8 +93,8 @@ export default function PostmanDashboard() {
     try {
       const res = await axios.get('http://localhost:8080/api/collections');
       setCollectionList(res.data);
-    } catch (err) {
-      console.error('Failed to fetch collections:', err);
+    } catch {
+      // Quiet fail if backend is not running on Netlify
     }
   };
 
@@ -283,12 +283,18 @@ export default function PostmanDashboard() {
       headers: currentTab.headers.filter((_, i) => i !== index),
     });
 
-  // Send Request
+  // Send Request (Client-Side Direct Call with Proxy Fallback)
   const handleSendRequest = async () => {
     setLoading(true);
     updateCurrentTab({ response: null });
 
     const processedUrl = replaceVariables(currentTab.url);
+
+    if (!processedUrl.trim()) {
+      alert("Please enter a valid URL");
+      setLoading(false);
+      return;
+    }
 
     const headerObject: Record<string, string> = {};
     currentTab.headers.forEach((h) => {
@@ -301,16 +307,19 @@ export default function PostmanDashboard() {
       headerObject['Authorization'] = `Bearer ${replaceVariables(currentTab.token.trim())}`;
     }
 
-    try {
-      let processedBody = null;
-      if (currentTab.body.trim()) {
-        try {
-          processedBody = JSON.parse(replaceVariables(currentTab.body));
-        } catch {
-          processedBody = replaceVariables(currentTab.body);
-        }
+    let processedBody = null;
+    if (currentTab.body.trim()) {
+      try {
+        processedBody = JSON.parse(replaceVariables(currentTab.body));
+      } catch {
+        processedBody = replaceVariables(currentTab.body);
       }
+    }
 
+    const startTime = Date.now();
+
+    // 1. First try Proxy (Local Spring Boot Server)
+    try {
       const res = await axios.post('http://localhost:8080/api/proxy/execute', {
         method: currentTab.method,
         url: processedUrl,
@@ -320,22 +329,74 @@ export default function PostmanDashboard() {
       });
 
       const autoResponseTab = res.data.testResults && res.data.testResults.length > 0 ? 'tests' : 'body';
-
-      updateCurrentTab({ 
-        response: res.data,
-        responseTab: autoResponseTab 
-      });
-    } catch (err: any) {
       updateCurrentTab({
-        response: {
-          statusCode: err.response?.status || 500,
-          responseTime: 0,
-          body: err.message || 'Error executing request',
-        },
+        response: res.data,
+        responseTab: autoResponseTab,
       });
+      fetchHistory();
+    } catch {
+      // 2. If Backend Proxy fails (e.g. deployed on Netlify), run directly from Client
+      try {
+        const res = await axios({
+          method: currentTab.method,
+          url: processedUrl,
+          headers: headerObject,
+          data: processedBody,
+        });
+
+        const responseTime = Date.now() - startTime;
+
+        // Run local assertion checks for Client-side requests
+        const testResults: TestResult[] = [];
+        if ((currentTab.tests || []).includes('STATUS_200')) {
+          testResults.push({
+            testName: 'Status Code is 200 OK',
+            passed: res.status === 200,
+            message: `Received status ${res.status}`,
+          });
+        }
+        if ((currentTab.tests || []).includes('RESPONSE_TIME_500MS')) {
+          testResults.push({
+            testName: 'Response time is less than 500ms',
+            passed: responseTime < 500,
+            message: `Response time was ${responseTime}ms`,
+          });
+        }
+        if ((currentTab.tests || []).includes('HAS_BODY')) {
+          testResults.push({
+            testName: 'Response body is present',
+            passed: Boolean(res.data),
+            message: res.data ? 'Body present' : 'Body missing',
+          });
+        }
+
+        const autoTab = testResults.length > 0 ? 'tests' : 'body';
+
+        updateCurrentTab({
+          response: {
+            statusCode: res.status,
+            responseTime,
+            headers: res.headers,
+            body: res.data,
+            testResults,
+          },
+          responseTab: autoTab,
+        });
+      } catch (err: any) {
+        const responseTime = Date.now() - startTime;
+        updateCurrentTab({
+          response: {
+            statusCode: err.response?.status || 500,
+            responseTime,
+            headers: err.response?.headers || {},
+            body: err.response?.data || err.message || 'Error executing request',
+            testResults: [],
+          },
+          responseTab: 'body',
+        });
+      }
     } finally {
       setLoading(false);
-      fetchHistory();
     }
   };
 
@@ -372,8 +433,9 @@ export default function PostmanDashboard() {
       setRequestName('');
       fetchCollections();
     } catch (err: any) {
-      console.error('Failed to save collection:', err);
-      alert('Failed to save request: ' + (err.response?.data?.message || err.message));
+      updateCurrentTab({ name: requestName });
+      setShowSaveModal(false);
+      setRequestName('');
     }
   };
 
@@ -650,7 +712,7 @@ export default function PostmanDashboard() {
             </div>
           </div>
 
-          {/* URL Input Area (Stacked for Mobile) */}
+          {/* URL Input Area */}
           <div className="flex flex-col sm:flex-row gap-2 mb-6 w-full">
             <div className="flex gap-2 w-full sm:w-auto">
               <select
@@ -964,7 +1026,7 @@ export default function PostmanDashboard() {
                     >
                       {currentTab.responseTab === 'body' && renderPrettyJson(currentTab.response.body)}
 
-                      {/* FIXED SAFE HEADER RENDERING 👇 */}
+                      {/* Safe Headers Rendering */}
                       {currentTab.responseTab === 'headers' && (
                         <div className="space-y-1">
                           {currentTab.response.headers &&
@@ -1040,7 +1102,7 @@ export default function PostmanDashboard() {
         </div>
       </div>
 
-      {/* Code Snippet Modal with Backdrop Animation */}
+      {/* Code Snippet Modal */}
       <AnimatePresence>
         {showCodeModal && (
           <motion.div
