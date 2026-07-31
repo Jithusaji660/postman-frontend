@@ -81,7 +81,6 @@ export default function PostmanDashboard() {
 
   // --- LOCALSTORAGE DATA HANDLERS ---
   useEffect(() => {
-    // Load History and Collections from localStorage when component mounts
     const savedHistory = localStorage.getItem('api_tester_history');
     if (savedHistory) {
       try {
@@ -320,7 +319,6 @@ export default function PostmanDashboard() {
 
       const responseTime = Date.now() - startTime;
 
-      // Assertion checks
       const testResults: TestResult[] = [];
       if ((currentTab.tests || []).includes('STATUS_200')) {
         testResults.push({
@@ -357,7 +355,6 @@ export default function PostmanDashboard() {
         responseTab: autoTab,
       });
 
-      // Save to History (LocalStorage)
       const newHistoryItem = {
         id: Date.now(),
         method: currentTab.method,
@@ -451,10 +448,10 @@ export default function PostmanDashboard() {
   );
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen md:h-screen bg-slate-950 text-white font-sans relative overflow-x-hidden w-full max-w-full">
+    <div className="flex flex-col md:flex-row h-screen bg-slate-950 text-white font-sans relative overflow-hidden w-full max-w-full">
       
       {/* MOBILE TOP BAR */}
-      <div className="flex md:hidden items-center justify-between p-3 bg-slate-900 border-b border-slate-800 sticky top-0 z-40 w-full">
+      <div className="flex md:hidden items-center justify-between p-3 bg-slate-900 border-b border-slate-800 sticky top-0 z-40 w-full shrink-0">
         <h2 className="text-sm font-bold flex items-center gap-2">
           <span>⚡</span> API Tester
         </h2>
@@ -470,14 +467,14 @@ export default function PostmanDashboard() {
       <div
         className={`${
           mobileSidebarOpen ? 'block fixed inset-0 top-[49px] bg-slate-900 z-30 p-4' : 'hidden'
-        } md:block md:static w-full md:w-64 bg-slate-900 border-r border-slate-800 p-4 flex flex-col shrink-0`}
+        } md:block md:static w-full md:w-64 bg-slate-900 border-r border-slate-800 p-4 flex flex-col h-full shrink-0 overflow-hidden`}
       >
-        <h2 className="hidden md:flex text-lg font-bold mb-3 items-center gap-2">
+        <h2 className="hidden md:flex text-lg font-bold mb-3 items-center gap-2 shrink-0">
           <span>⚡</span> API Tester
         </h2>
 
         {/* Search Input Bar */}
-        <div className="relative mb-3">
+        <div className="relative mb-3 shrink-0">
           <Search size={13} className="absolute left-2.5 top-2.5 text-slate-500" />
           <input
             type="text"
@@ -489,7 +486,7 @@ export default function PostmanDashboard() {
         </div>
 
         {/* Sidebar Toggle */}
-        <div className="flex border-b border-slate-800 mb-3 text-xs">
+        <div className="flex border-b border-slate-800 mb-3 text-xs shrink-0">
           <button
             onClick={() => setSidebarTab('history')}
             className={`pb-2 flex-1 font-semibold transition-colors relative ${
@@ -515,7 +512,7 @@ export default function PostmanDashboard() {
         </div>
 
         {/* List Content */}
-        <div className="flex-1 overflow-y-auto space-y-1 pr-1 max-h-[calc(100vh-160px)] md:max-h-none">
+        <div className="flex-1 overflow-y-auto space-y-1 pr-1 min-h-0">
           <AnimatePresence mode="wait">
             {sidebarTab === 'history' ? (
               <motion.div
@@ -617,9 +614,9 @@ export default function PostmanDashboard() {
       </div>
 
       {/* 2. MAIN CONTENT AREA */}
-      <div className="flex-1 flex flex-col min-w-0 w-full overflow-y-auto">
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
         {/* MULTI-TAB HEADER BAR */}
-        <div className="flex items-center bg-slate-900 border-b border-slate-800 px-2 pt-2 gap-1 overflow-x-auto w-full">
+        <div className="flex items-center bg-slate-900 border-b border-slate-800 px-2 pt-2 gap-1 overflow-x-auto w-full shrink-0">
           {tabs.map((tab) => (
             <motion.div
               key={tab.id}
@@ -665,9 +662,9 @@ export default function PostmanDashboard() {
           </motion.button>
         </div>
 
-        <div className="p-3 md:p-6 flex-1 flex flex-col w-full">
+        <div className="p-3 md:p-5 flex-1 flex flex-col w-full overflow-hidden">
           {/* Environment & Code Button Bar */}
-          <div className="flex flex-wrap justify-between items-center gap-2 mb-3">
+          <div className="flex flex-wrap justify-between items-center gap-2 mb-3 shrink-0">
             <span className="text-xs text-slate-400 font-medium">Request Builder</span>
             <div className="flex gap-2 w-full sm:w-auto justify-end">
               <motion.button
@@ -692,7 +689,7 @@ export default function PostmanDashboard() {
           </div>
 
           {/* URL Input Area */}
-          <div className="flex flex-col sm:flex-row gap-2 mb-6 w-full">
+          <div className="flex flex-col sm:flex-row gap-2 mb-4 w-full shrink-0">
             <div className="flex gap-2 w-full sm:w-auto">
               <select
                 value={currentTab.method}
@@ -762,10 +759,11 @@ export default function PostmanDashboard() {
           </div>
 
           {/* Dynamic Request Builder & Response Area */}
-          <div className="flex-1 flex flex-col md:grid md:grid-cols-2 gap-4 md:gap-6 w-full">
+          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5 min-h-0 overflow-hidden">
+            
             {/* Request Builder Box */}
-            <div className="bg-slate-900 rounded border border-slate-800 p-3 md:p-4 flex flex-col min-h-[200px]">
-              <div className="flex border-b border-slate-800 mb-4 gap-4 text-xs font-medium relative overflow-x-auto">
+            <div className="bg-slate-900 rounded border border-slate-800 p-3 md:p-4 flex flex-col h-full min-h-0 overflow-hidden">
+              <div className="flex border-b border-slate-800 mb-3 gap-4 text-xs font-medium relative overflow-x-auto shrink-0">
                 {[
                   { id: 'headers', label: `Headers (${currentTab.headers.length})` },
                   { id: 'auth', label: `Auth ${currentTab.authType !== 'none' ? '•' : ''}` },
@@ -787,7 +785,7 @@ export default function PostmanDashboard() {
                 ))}
               </div>
 
-              <div className="flex-1 overflow-hidden">
+              <div className="flex-1 overflow-y-auto min-h-0 pr-1">
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={currentTab.activeTab}
@@ -798,7 +796,7 @@ export default function PostmanDashboard() {
                     className="h-full flex flex-col"
                   >
                     {currentTab.activeTab === 'headers' && (
-                      <div className="flex-1 overflow-y-auto space-y-2 pr-1 max-h-48 md:max-h-none">
+                      <div className="space-y-2 pr-1">
                         {currentTab.headers.map((h, idx) => (
                           <div key={idx} className="flex gap-2">
                             <input
@@ -830,7 +828,7 @@ export default function PostmanDashboard() {
                     )}
 
                     {currentTab.activeTab === 'auth' && (
-                      <div className="flex-1 space-y-4 text-xs">
+                      <div className="space-y-4 text-xs">
                         <div>
                           <label className="block text-slate-400 mb-1">Type</label>
                           <select
@@ -857,18 +855,18 @@ export default function PostmanDashboard() {
                     )}
 
                     {currentTab.activeTab === 'body' && (
-                      <div className="flex-1 flex flex-col min-h-[120px]">
+                      <div className="flex-1 flex flex-col h-full min-h-[140px]">
                         <textarea
                           value={currentTab.body}
                           onChange={(e) => updateCurrentTab({ body: e.target.value })}
                           placeholder='{\n  "key": "value"\n}'
-                          className="w-full min-h-[120px] md:h-full bg-slate-950 border border-slate-800 rounded p-3 text-xs font-mono text-emerald-400 outline-none focus:border-slate-700 transition"
+                          className="w-full flex-1 bg-slate-950 border border-slate-800 rounded p-3 text-xs font-mono text-emerald-400 outline-none focus:border-slate-700 transition resize-none"
                         />
                       </div>
                     )}
 
                     {currentTab.activeTab === 'tests' && (
-                      <div className="flex-1 space-y-3 overflow-y-auto pr-1">
+                      <div className="space-y-3 pr-1">
                         <p className="text-xs text-slate-400 mb-2">Select automated test assertions to run:</p>
                         {[
                           { id: 'STATUS_200', label: 'Status Code is 200 OK' },
@@ -903,12 +901,11 @@ export default function PostmanDashboard() {
             </div>
 
             {/* Response Box */}
-            <div className="bg-slate-900 rounded border border-slate-800 p-3 md:p-4 flex flex-col min-h-[200px]">
-              <div className="flex flex-wrap justify-between items-center gap-2 mb-3 min-h-[32px]">
+            <div className="bg-slate-900 rounded border border-slate-800 p-3 md:p-4 flex flex-col h-full min-h-0 overflow-hidden">
+              <div className="flex flex-wrap justify-between items-center gap-2 mb-3 shrink-0">
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-semibold">Response</h3>
 
-                  {/* Response Tabs */}
                   {currentTab.response && (
                     <div className="flex text-xs bg-slate-950 p-0.5 rounded border border-slate-800 overflow-x-auto">
                       <button
@@ -982,8 +979,8 @@ export default function PostmanDashboard() {
                 )}
               </div>
 
-              {/* Response Content View */}
-              <div className="flex-1 bg-slate-950 border border-slate-800 rounded p-3 overflow-y-auto font-mono text-xs relative min-h-[140px] max-h-60 md:max-h-none">
+              {/* Response Content View - STRICT OVERFLOW CONTROL */}
+              <div className="flex-1 bg-slate-950 border border-slate-800 rounded p-3 overflow-y-auto font-mono text-xs relative min-h-0">
                 <AnimatePresence mode="wait">
                   {!currentTab.response ? (
                     <motion.p
