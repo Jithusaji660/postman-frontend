@@ -573,30 +573,32 @@ export default function PostmanDashboard() {
           mobileSidebarOpen ? 'block fixed inset-0 top-[49px] bg-slate-900 z-30 p-4' : 'hidden'
         } md:block md:static w-full md:w-64 bg-slate-900 border-r border-slate-800 p-4 flex flex-col shrink-0`}
       >
-        {/* Title & User Profile Section */}
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
-          <h2 className="hidden md:flex text-lg font-bold items-center gap-2">
-            <span>⚡</span> API Tester
-          </h2>
-          {user ? (
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-indigo-400 font-semibold truncate max-w-[90px]">
-                👤 {user.name}
-              </span>
+        {/* Title & User Profile Section - Clean Fixed Layout */}
+        <div className="flex flex-col gap-2 border-b border-slate-800 pb-3 mb-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-bold flex items-center gap-1.5">
+              <span>⚡</span> API Tester
+            </h2>
+            {user ? (
               <button
                 onClick={handleLogout}
                 className="text-[10px] bg-slate-800 hover:bg-red-500/20 hover:text-red-400 px-2 py-1 rounded transition"
               >
                 Logout
               </button>
+            ) : (
+              <button
+                onClick={() => router.push('/login')}
+                className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1 rounded transition font-medium"
+              >
+                Sign In
+              </button>
+            )}
+          </div>
+          {user && (
+            <div className="text-xs text-indigo-400 font-semibold truncate">
+              👤 {user.name}
             </div>
-          ) : (
-            <button
-              onClick={() => router.push('/login')}
-              className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1 rounded transition font-medium"
-            >
-              Sign In
-            </button>
           )}
         </div>
 
