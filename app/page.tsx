@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
-import { Trash2, Settings, Copy, Check, Code, Plus, X, Search, Menu } from 'lucide-react';
+import { Trash2, Settings, Copy, Check, Code, Plus, X, Search, Menu, User, ShieldCheck, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface TestResult {
@@ -557,7 +557,7 @@ export default function PostmanDashboard() {
       {/* MOBILE TOP BAR */}
       <div className="flex md:hidden items-center justify-between p-3 bg-slate-900 border-b border-slate-800 sticky top-0 z-40 w-full">
         <h2 className="text-sm font-bold flex items-center gap-2">
-          <span>⚡</span> API Tester
+          <span className="bg-indigo-600 text-white p-1 rounded">⚡</span> API Tester Pro
         </h2>
         <button
           onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
@@ -571,34 +571,52 @@ export default function PostmanDashboard() {
       <div
         className={`${
           mobileSidebarOpen ? 'block fixed inset-0 top-[49px] bg-slate-900 z-30 p-4' : 'hidden'
-        } md:block md:static w-full md:w-64 bg-slate-900 border-r border-slate-800 p-4 flex flex-col shrink-0`}
+        } md:block md:static w-full md:w-68 bg-slate-900 border-r border-slate-800 p-4 flex flex-col shrink-0`}
       >
-        {/* Title & User Profile Section - Clean Fixed Layout */}
-        <div className="flex flex-col gap-2 border-b border-slate-800 pb-3 mb-3">
+        {/* Professional Title & User Profile Section */}
+        <div className="flex flex-col gap-3 border-b border-slate-800 pb-4 mb-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold flex items-center gap-1.5">
-              <span>⚡</span> API Tester
-            </h2>
-            {user ? (
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-md shadow-indigo-500/20 text-white font-bold">
+                ⚡
+              </div>
+              <div>
+                <h1 className="text-sm font-bold tracking-tight text-white flex items-center gap-1">
+                  API Tester <span className="text-[10px] bg-indigo-500/20 text-indigo-400 px-1.5 py-0.2 rounded font-semibold border border-indigo-500/30">PRO</span>
+                </h1>
+                <p className="text-[10px] text-slate-400">Enterprise Workspace</p>
+              </div>
+            </div>
+          </div>
+
+          {/* User Profile Card / Sign In */}
+          {user ? (
+            <div className="bg-slate-950/80 border border-slate-800/80 rounded-lg p-2.5 flex items-center justify-between shadow-inner">
+              <div className="flex items-center gap-2 overflow-hidden">
+                <div className="w-7 h-7 rounded-full bg-slate-800 flex items-center justify-center text-indigo-400 shrink-0 border border-slate-700">
+                  <User size={13} />
+                </div>
+                <div className="overflow-hidden">
+                  <p className="text-xs font-semibold text-slate-200 truncate">{user.name}</p>
+                  <p className="text-[10px] text-slate-400 truncate">{user.email}</p>
+                </div>
+              </div>
               <button
                 onClick={handleLogout}
-                className="text-[10px] bg-slate-800 hover:bg-red-500/20 hover:text-red-400 px-2 py-1 rounded transition"
+                className="p-1.5 bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded transition shrink-0"
+                title="Logout"
               >
-                Logout
+                <LogOut size={13} />
               </button>
-            ) : (
-              <button
-                onClick={() => router.push('/login')}
-                className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1 rounded transition font-medium"
-              >
-                Sign In
-              </button>
-            )}
-          </div>
-          {user && (
-            <div className="text-xs text-indigo-400 font-semibold truncate">
-              👤 {user.name}
             </div>
+          ) : (
+            <button
+              onClick={() => router.push('/login')}
+              className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white py-2 rounded-md text-xs font-semibold transition shadow-md shadow-indigo-600/20 flex items-center justify-center gap-1.5"
+            >
+              <User size={13} />
+              <span>Sign In to Workspace</span>
+            </button>
           )}
         </div>
 
