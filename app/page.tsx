@@ -421,8 +421,8 @@ export default function PostmanDashboard() {
         });
       }
       if (activeTests.includes('CONTENT_TYPE_JSON')) {
-        const contentType = res.headers['content-type'] || '';
-        const isJson = contentType.toLowerCase().includes('application/json');
+        const contentType = String(res.headers['content-type'] || '').toLowerCase();
+        const isJson = contentType.includes('application/json');
         testResults.push({
           testName: 'Content-Type is JSON',
           passed: isJson,
