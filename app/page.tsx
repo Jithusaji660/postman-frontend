@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { Trash2, Settings, Copy, Check, Code, Plus, X, Search, Menu } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -16,17 +17,21 @@ interface TabItem {
   name: string;
   method: string;
   url: string;
+  params: { key: string; value: string }[];
   headers: { key: string; value: string }[];
   authType: 'none' | 'bearer';
   token: string;
   body: string;
   tests: string[];
   response: any;
-  activeTab: 'headers' | 'auth' | 'body' | 'tests';
+  activeTab: 'params' | 'headers' | 'auth' | 'body' | 'tests';
   responseTab: 'body' | 'headers' | 'tests';
 }
 
 export default function PostmanDashboard() {
+  const router = useRouter();
+  const [user, setUser] = useState<{ name: string; email: string } | null>(null);
+
   // Mobile Sidebar Drawer Toggle
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
@@ -37,6 +42,7 @@ export default function PostmanDashboard() {
       name: 'Untitled Request',
       method: 'GET',
       url: '',
+      params: [{ key: '', value: '' }],
       headers: [{ key: 'Content-Type', value: 'application/json' }],
       authType: 'none',
       token: '',
@@ -79,8 +85,35 @@ export default function PostmanDashboard() {
   const [codeLanguage, setCodeLanguage] = useState<'curl' | 'javascript' | 'python'>('curl');
   const [codeCopied, setCodeCopied] = useState(false);
 
+  // Dynamic HTTP Method Color Helper
+  const getMethodColor = (method: string) => {
+    switch (method?.toUpperCase()) {
+      case 'GET':
+        return 'text-green-400';
+      case 'POST':
+        return 'text-yellow-400';
+      case 'PUT':
+        return 'text-orange-400';
+      case 'DELETE':
+        return 'text-red-400';
+      default:
+        return 'text-blue-400';
+    }
+  };
+
   // --- LOCALSTORAGE DATA HANDLERS ---
   useEffect(() => {
+    // 1. Load User Profile
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      try {
+        setUser(JSON.parse(savedUser));
+      } catch (e) {
+        console.error('Failed to parse user from localStorage', e);
+      }
+    }
+
+    // 2. Load History and Collections
     const savedHistory = localStorage.getItem('api_tester_history');
     if (savedHistory) {
       try {
@@ -100,6 +133,12 @@ export default function PostmanDashboard() {
     }
   }, []);
 
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setUser(null);
+  };
+
   // Update Current Tab Helper Function
   const updateCurrentTab = (fields: Partial<TabItem>) => {
     setTabs((prev) =>
@@ -115,6 +154,7 @@ export default function PostmanDashboard() {
       name: 'Untitled Request',
       method: 'GET',
       url: '',
+      params: [{ key: '', value: '' }],
       headers: [{ key: 'Content-Type', value: 'application/json' }],
       authType: 'none',
       token: '',
@@ -259,6 +299,21 @@ export default function PostmanDashboard() {
     localStorage.setItem('api_tester_collections', JSON.stringify(updated));
   };
 
+  // Param Handlers
+  const handleParamChange = (index: number, key: string, value: string) => {
+    const newParams = [...(currentTab.params || [])];
+    newParams[index] = { key, value };
+    updateCurrentTab({ params: newParams });
+  };
+
+  const addParamRow = () =>
+    updateCurrentTab({ params: [...(currentTab.params || []), { key: '', value: '' }] });
+
+  const removeParamRow = (index: number) =>
+    updateCurrentTab({
+      params: (currentTab.params || []).filter((_, i) => i !== index),
+    });
+
   // Header Handlers
   const handleHeaderChange = (index: number, key: string, value: string) => {
     const newHeaders = [...currentTab.headers];
@@ -279,12 +334,21 @@ export default function PostmanDashboard() {
     setLoading(true);
     updateCurrentTab({ response: null });
 
-    const processedUrl = replaceVariables(currentTab.url);
+    let processedUrl = replaceVariables(currentTab.url);
 
     if (!processedUrl.trim()) {
       alert("Please enter a valid URL");
       setLoading(false);
       return;
+    }
+
+    // Append Query Parameters to URL
+    const activeParams = (currentTab.params || []).filter((p) => p.key.trim() !== '');
+    if (activeParams.length > 0) {
+      const queryString = activeParams
+        .map((p) => `${encodeURIComponent(replaceVariables(p.key))}=${encodeURIComponent(replaceVariables(p.value))}`)
+        .join('&');
+      processedUrl += (processedUrl.includes('?') ? '&' : '?') + queryString;
     }
 
     const headerObject: Record<string, string> = {};
@@ -319,22 +383,60 @@ export default function PostmanDashboard() {
 
       const responseTime = Date.now() - startTime;
 
+      // Calculate Response Size (KB)
+      const responseString = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
+      const sizeInBytes = new Blob([responseString || '']).size;
+      const sizeInKb = (sizeInBytes / 1024).toFixed(2);
+
+      // Complete 7-Assertion Checklist
       const testResults: TestResult[] = [];
-      if ((currentTab.tests || []).includes('STATUS_200')) {
+      const activeTests = currentTab.tests || [];
+
+      if (activeTests.includes('STATUS_200')) {
         testResults.push({
           testName: 'Status Code is 200 OK',
           passed: res.status === 200,
           message: `Received status ${res.status}`,
         });
       }
-      if ((currentTab.tests || []).includes('RESPONSE_TIME_500MS')) {
+      if (activeTests.includes('STATUS_201')) {
+        testResults.push({
+          testName: 'Status Code is 201 Created',
+          passed: res.status === 201,
+          message: `Received status ${res.status}`,
+        });
+      }
+      if (activeTests.includes('STATUS_404')) {
+        testResults.push({
+          testName: 'Status Code is 404 Not Found',
+          passed: res.status === 404,
+          message: `Received status ${res.status}`,
+        });
+      }
+      if (activeTests.includes('STATUS_500')) {
+        testResults.push({
+          testName: 'Status Code is 500 Server Error',
+          passed: res.status === 500,
+          message: `Received status ${res.status}`,
+        });
+      }
+      if (activeTests.includes('CONTENT_TYPE_JSON')) {
+        const contentType = res.headers['content-type'] || '';
+        const isJson = contentType.toLowerCase().includes('application/json');
+        testResults.push({
+          testName: 'Content-Type is JSON',
+          passed: isJson,
+          message: isJson ? 'Valid JSON header' : 'Non-JSON response',
+        });
+      }
+      if (activeTests.includes('RESPONSE_TIME_500MS')) {
         testResults.push({
           testName: 'Response time is less than 500ms',
           passed: responseTime < 500,
           message: `Response time was ${responseTime}ms`,
         });
       }
-      if ((currentTab.tests || []).includes('HAS_BODY')) {
+      if (activeTests.includes('HAS_BODY')) {
         testResults.push({
           testName: 'Response body is present',
           passed: Boolean(res.data),
@@ -348,6 +450,7 @@ export default function PostmanDashboard() {
         response: {
           statusCode: res.status,
           responseTime,
+          size: `${sizeInKb} KB`,
           headers: res.headers,
           body: res.data,
           testResults,
@@ -355,6 +458,7 @@ export default function PostmanDashboard() {
         responseTab: autoTab,
       });
 
+      // Save to History (LocalStorage)
       const newHistoryItem = {
         id: Date.now(),
         method: currentTab.method,
@@ -367,13 +471,13 @@ export default function PostmanDashboard() {
       const newHistoryList = [newHistoryItem, ...historyList];
       setHistoryList(newHistoryList);
       localStorage.setItem('api_tester_history', JSON.stringify(newHistoryList));
-
     } catch (err: any) {
       const responseTime = Date.now() - startTime;
       updateCurrentTab({
         response: {
           statusCode: err.response?.status || 500,
           responseTime,
+          size: '0.00 KB',
           headers: err.response?.headers || {},
           body: err.response?.data || err.message || 'Error executing request',
           testResults: [],
@@ -448,10 +552,10 @@ export default function PostmanDashboard() {
   );
 
   return (
-    <div className="flex flex-col md:flex-row h-screen bg-slate-950 text-white font-sans relative overflow-hidden w-full max-w-full">
+    <div className="flex flex-col md:flex-row min-h-screen md:h-screen bg-slate-950 text-white font-sans relative overflow-x-hidden w-full max-w-full">
       
       {/* MOBILE TOP BAR */}
-      <div className="flex md:hidden items-center justify-between p-3 bg-slate-900 border-b border-slate-800 sticky top-0 z-40 w-full shrink-0">
+      <div className="flex md:hidden items-center justify-between p-3 bg-slate-900 border-b border-slate-800 sticky top-0 z-40 w-full">
         <h2 className="text-sm font-bold flex items-center gap-2">
           <span>⚡</span> API Tester
         </h2>
@@ -467,14 +571,37 @@ export default function PostmanDashboard() {
       <div
         className={`${
           mobileSidebarOpen ? 'block fixed inset-0 top-[49px] bg-slate-900 z-30 p-4' : 'hidden'
-        } md:block md:static w-full md:w-64 bg-slate-900 border-r border-slate-800 p-4 flex flex-col h-full shrink-0 overflow-hidden`}
+        } md:block md:static w-full md:w-64 bg-slate-900 border-r border-slate-800 p-4 flex flex-col shrink-0`}
       >
-        <h2 className="hidden md:flex text-lg font-bold mb-3 items-center gap-2 shrink-0">
-          <span>⚡</span> API Tester
-        </h2>
+        {/* Title & User Profile Section */}
+        <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
+          <h2 className="hidden md:flex text-lg font-bold items-center gap-2">
+            <span>⚡</span> API Tester
+          </h2>
+          {user ? (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-indigo-400 font-semibold truncate max-w-[90px]">
+                👤 {user.name}
+              </span>
+              <button
+                onClick={handleLogout}
+                className="text-[10px] bg-slate-800 hover:bg-red-500/20 hover:text-red-400 px-2 py-1 rounded transition"
+              >
+                Logout
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => router.push('/login')}
+              className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1 rounded transition font-medium"
+            >
+              Sign In
+            </button>
+          )}
+        </div>
 
         {/* Search Input Bar */}
-        <div className="relative mb-3 shrink-0">
+        <div className="relative mb-3">
           <Search size={13} className="absolute left-2.5 top-2.5 text-slate-500" />
           <input
             type="text"
@@ -486,7 +613,7 @@ export default function PostmanDashboard() {
         </div>
 
         {/* Sidebar Toggle */}
-        <div className="flex border-b border-slate-800 mb-3 text-xs shrink-0">
+        <div className="flex border-b border-slate-800 mb-3 text-xs">
           <button
             onClick={() => setSidebarTab('history')}
             className={`pb-2 flex-1 font-semibold transition-colors relative ${
@@ -512,7 +639,7 @@ export default function PostmanDashboard() {
         </div>
 
         {/* List Content */}
-        <div className="flex-1 overflow-y-auto space-y-1 pr-1 min-h-0">
+        <div className="flex-1 overflow-y-auto space-y-1 pr-1 max-h-[calc(100vh-160px)] md:max-h-none">
           <AnimatePresence mode="wait">
             {sidebarTab === 'history' ? (
               <motion.div
@@ -534,15 +661,7 @@ export default function PostmanDashboard() {
                       className="group text-xs text-slate-300 hover:bg-slate-800/80 p-2 rounded cursor-pointer flex items-center justify-between transition"
                     >
                       <div className="flex items-center gap-2 truncate pr-1">
-                        <span
-                          className={`font-bold text-[10px] ${
-                            item.method === 'GET'
-                              ? 'text-green-400'
-                              : item.method === 'POST'
-                              ? 'text-yellow-400'
-                              : 'text-blue-400'
-                          }`}
-                        >
+                        <span className={`font-bold text-[10px] ${getMethodColor(item.method)}`}>
                           {item.method}
                         </span>
                         <span className="truncate max-w-[140px] md:max-w-[90px]">{item.url}</span>
@@ -586,11 +705,7 @@ export default function PostmanDashboard() {
                       <div className="flex flex-col gap-1 overflow-hidden pr-1">
                         <span className="font-semibold text-slate-200 truncate">{item.name}</span>
                         <div className="flex items-center gap-2">
-                          <span
-                            className={`font-bold text-[10px] ${
-                              item.method === 'GET' ? 'text-green-400' : 'text-yellow-400'
-                            }`}
-                          >
+                          <span className={`font-bold text-[10px] ${getMethodColor(item.method)}`}>
                             {item.method}
                           </span>
                           <span className="truncate max-w-[110px] text-slate-400">{item.url}</span>
@@ -614,9 +729,9 @@ export default function PostmanDashboard() {
       </div>
 
       {/* 2. MAIN CONTENT AREA */}
-      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 w-full overflow-y-auto">
         {/* MULTI-TAB HEADER BAR */}
-        <div className="flex items-center bg-slate-900 border-b border-slate-800 px-2 pt-2 gap-1 overflow-x-auto w-full shrink-0">
+        <div className="flex items-center bg-slate-900 border-b border-slate-800 px-2 pt-2 gap-1 overflow-x-auto w-full">
           {tabs.map((tab) => (
             <motion.div
               key={tab.id}
@@ -628,15 +743,7 @@ export default function PostmanDashboard() {
                   : 'bg-slate-900 border-transparent text-slate-400 hover:text-slate-200'
               }`}
             >
-              <span
-                className={`font-bold text-[10px] ${
-                  tab.method === 'GET'
-                    ? 'text-green-400'
-                    : tab.method === 'POST'
-                    ? 'text-yellow-400'
-                    : 'text-blue-400'
-                }`}
-              >
+              <span className={`font-bold text-[10px] ${getMethodColor(tab.method)}`}>
                 {tab.method}
               </span>
               <span className="truncate flex-1">{tab.name}</span>
@@ -662,9 +769,9 @@ export default function PostmanDashboard() {
           </motion.button>
         </div>
 
-        <div className="p-3 md:p-5 flex-1 flex flex-col w-full overflow-hidden">
+        <div className="p-3 md:p-6 flex-1 flex flex-col w-full">
           {/* Environment & Code Button Bar */}
-          <div className="flex flex-wrap justify-between items-center gap-2 mb-3 shrink-0">
+          <div className="flex flex-wrap justify-between items-center gap-2 mb-3">
             <span className="text-xs text-slate-400 font-medium">Request Builder</span>
             <div className="flex gap-2 w-full sm:w-auto justify-end">
               <motion.button
@@ -689,17 +796,28 @@ export default function PostmanDashboard() {
           </div>
 
           {/* URL Input Area */}
-          <div className="flex flex-col sm:flex-row gap-2 mb-4 w-full shrink-0">
+          <div className="flex flex-col sm:flex-row gap-2 mb-6 w-full">
             <div className="flex gap-2 w-full sm:w-auto">
+              {/* Dynamic Styled Method Dropdown Selector */}
               <select
                 value={currentTab.method}
                 onChange={(e) => updateCurrentTab({ method: e.target.value })}
-                className="bg-slate-800 border border-slate-700 text-white text-sm rounded px-3 py-2 outline-none font-bold text-blue-400 cursor-pointer w-28 sm:w-auto"
+                className={`bg-slate-800 border border-slate-700 text-sm rounded px-3 py-2 outline-none font-bold cursor-pointer w-28 sm:w-auto ${getMethodColor(
+                  currentTab.method
+                )}`}
               >
-                <option value="GET">GET</option>
-                <option value="POST">POST</option>
-                <option value="PUT">PUT</option>
-                <option value="DELETE">DELETE</option>
+                <option value="GET" className="text-green-400 bg-slate-900 font-bold">
+                  GET
+                </option>
+                <option value="POST" className="text-yellow-400 bg-slate-900 font-bold">
+                  POST
+                </option>
+                <option value="PUT" className="text-orange-400 bg-slate-900 font-bold">
+                  PUT
+                </option>
+                <option value="DELETE" className="text-red-400 bg-slate-900 font-bold">
+                  DELETE
+                </option>
               </select>
 
               <motion.button
@@ -759,12 +877,12 @@ export default function PostmanDashboard() {
           </div>
 
           {/* Dynamic Request Builder & Response Area */}
-          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5 min-h-0 overflow-hidden">
-            
+          <div className="flex-1 flex flex-col md:grid md:grid-cols-2 gap-4 md:gap-6 w-full">
             {/* Request Builder Box */}
-            <div className="bg-slate-900 rounded border border-slate-800 p-3 md:p-4 flex flex-col h-full min-h-0 overflow-hidden">
-              <div className="flex border-b border-slate-800 mb-3 gap-4 text-xs font-medium relative overflow-x-auto shrink-0">
+            <div className="bg-slate-900 rounded border border-slate-800 p-3 md:p-4 flex flex-col min-h-[200px]">
+              <div className="flex border-b border-slate-800 mb-4 gap-4 text-xs font-medium relative overflow-x-auto">
                 {[
+                  { id: 'params', label: `Params (${(currentTab.params || []).length})` },
                   { id: 'headers', label: `Headers (${currentTab.headers.length})` },
                   { id: 'auth', label: `Auth ${currentTab.authType !== 'none' ? '•' : ''}` },
                   { id: 'body', label: 'Body' },
@@ -785,7 +903,7 @@ export default function PostmanDashboard() {
                 ))}
               </div>
 
-              <div className="flex-1 overflow-y-auto min-h-0 pr-1">
+              <div className="flex-1 overflow-hidden">
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={currentTab.activeTab}
@@ -795,8 +913,40 @@ export default function PostmanDashboard() {
                     transition={{ duration: 0.15 }}
                     className="h-full flex flex-col"
                   >
+                    {currentTab.activeTab === 'params' && (
+                      <div className="flex-1 overflow-y-auto space-y-2 pr-1 max-h-48 md:max-h-none">
+                        {(currentTab.params || []).map((p, idx) => (
+                          <div key={idx} className="flex gap-2">
+                            <input
+                              type="text"
+                              placeholder="Key"
+                              value={p.key}
+                              onChange={(e) => handleParamChange(idx, e.target.value, p.value)}
+                              className="w-1/2 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs outline-none focus:border-slate-700"
+                            />
+                            <input
+                              type="text"
+                              placeholder="Value"
+                              value={p.value}
+                              onChange={(e) => handleParamChange(idx, p.key, e.target.value)}
+                              className="w-1/2 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs outline-none focus:border-slate-700"
+                            />
+                            <button onClick={() => removeParamRow(idx)} className="text-red-400 hover:text-red-300 text-xs px-1">
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          onClick={addParamRow}
+                          className="text-xs text-indigo-400 hover:underline mt-2 inline-block font-medium"
+                        >
+                          + Add Param
+                        </button>
+                      </div>
+                    )}
+
                     {currentTab.activeTab === 'headers' && (
-                      <div className="space-y-2 pr-1">
+                      <div className="flex-1 overflow-y-auto space-y-2 pr-1 max-h-48 md:max-h-none">
                         {currentTab.headers.map((h, idx) => (
                           <div key={idx} className="flex gap-2">
                             <input
@@ -828,7 +978,7 @@ export default function PostmanDashboard() {
                     )}
 
                     {currentTab.activeTab === 'auth' && (
-                      <div className="space-y-4 text-xs">
+                      <div className="flex-1 space-y-4 text-xs">
                         <div>
                           <label className="block text-slate-400 mb-1">Type</label>
                           <select
@@ -855,21 +1005,25 @@ export default function PostmanDashboard() {
                     )}
 
                     {currentTab.activeTab === 'body' && (
-                      <div className="flex-1 flex flex-col h-full min-h-[140px]">
+                      <div className="flex-1 flex flex-col min-h-[120px]">
                         <textarea
                           value={currentTab.body}
                           onChange={(e) => updateCurrentTab({ body: e.target.value })}
                           placeholder='{\n  "key": "value"\n}'
-                          className="w-full flex-1 bg-slate-950 border border-slate-800 rounded p-3 text-xs font-mono text-emerald-400 outline-none focus:border-slate-700 transition resize-none"
+                          className="w-full min-h-[120px] md:h-full bg-slate-950 border border-slate-800 rounded p-3 text-xs font-mono text-emerald-400 outline-none focus:border-slate-700 transition"
                         />
                       </div>
                     )}
 
                     {currentTab.activeTab === 'tests' && (
-                      <div className="space-y-3 pr-1">
+                      <div className="flex-1 space-y-3 overflow-y-auto pr-1">
                         <p className="text-xs text-slate-400 mb-2">Select automated test assertions to run:</p>
                         {[
                           { id: 'STATUS_200', label: 'Status Code is 200 OK' },
+                          { id: 'STATUS_201', label: 'Status Code is 201 Created' },
+                          { id: 'STATUS_404', label: 'Status Code is 404 Not Found' },
+                          { id: 'STATUS_500', label: 'Status Code is 500 Server Error' },
+                          { id: 'CONTENT_TYPE_JSON', label: 'Content-Type is application/json' },
                           { id: 'RESPONSE_TIME_500MS', label: 'Response time is less than 500ms' },
                           { id: 'HAS_BODY', label: 'Response body is present' },
                         ].map((test) => (
@@ -901,11 +1055,12 @@ export default function PostmanDashboard() {
             </div>
 
             {/* Response Box */}
-            <div className="bg-slate-900 rounded border border-slate-800 p-3 md:p-4 flex flex-col h-full min-h-0 overflow-hidden">
-              <div className="flex flex-wrap justify-between items-center gap-2 mb-3 shrink-0">
+            <div className="bg-slate-900 rounded border border-slate-800 p-3 md:p-4 flex flex-col min-h-[200px]">
+              <div className="flex flex-wrap justify-between items-center gap-2 mb-3 min-h-[32px]">
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-semibold">Response</h3>
 
+                  {/* Response Tabs */}
                   {currentTab.response && (
                     <div className="flex text-xs bg-slate-950 p-0.5 rounded border border-slate-800 overflow-x-auto">
                       <button
@@ -967,6 +1122,10 @@ export default function PostmanDashboard() {
                       {currentTab.response.responseTime} ms
                     </span>
 
+                    <span className="text-indigo-400 font-mono text-[11px] bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
+                      📦 {currentTab.response.size || '0.00 KB'}
+                    </span>
+
                     <button
                       onClick={handleCopyResponse}
                       className="flex items-center gap-1 text-slate-400 hover:text-white bg-slate-800 px-2 py-1 rounded transition"
@@ -975,12 +1134,35 @@ export default function PostmanDashboard() {
                       {copied ? <Check size={12} className="text-green-400" /> : <Copy size={12} />}
                       <span>{copied ? 'Copied' : 'Copy'}</span>
                     </button>
+
+                    <button
+                      onClick={() => {
+                        const blob = new Blob([JSON.stringify(currentTab.response.body, null, 2)], { type: 'application/json' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `response-${Date.now()}.json`;
+                        a.click();
+                      }}
+                      className="text-slate-400 hover:text-white bg-slate-800 px-2 py-1 rounded transition"
+                      title="Download JSON"
+                    >
+                      ⬇
+                    </button>
+
+                    <button
+                      onClick={() => updateCurrentTab({ response: null })}
+                      className="text-red-400 hover:text-red-300 bg-slate-800 px-2 py-1 rounded transition"
+                      title="Clear Response"
+                    >
+                      ✕
+                    </button>
                   </motion.div>
                 )}
               </div>
 
-              {/* Response Content View - STRICT OVERFLOW CONTROL */}
-              <div className="flex-1 bg-slate-950 border border-slate-800 rounded p-3 overflow-y-auto font-mono text-xs relative min-h-0">
+              {/* Response Content View */}
+              <div className="flex-1 bg-slate-950 border border-slate-800 rounded p-3 overflow-y-auto font-mono text-xs relative min-h-[140px] max-h-60 md:max-h-none">
                 <AnimatePresence mode="wait">
                   {!currentTab.response ? (
                     <motion.p
