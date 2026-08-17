@@ -4,35 +4,33 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { motion } from 'framer-motion';
-import { Mail, Lock, ArrowRight } from 'lucide-react';
+import { User, Mail, Lock, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const router = useRouter();
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
     try {
-      const response = await axios.post('http://localhost:8080/api/auth/login', {
+      await axios.post('http://localhost:8080/api/auth/register', {
+        name,
         email,
         password,
       });
 
-      const { token, name, email: userEmail } = response.data;
-
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify({ name: name || email.split('@')[0], email: userEmail }));
-
-      router.push('/');
+      alert('Registration successful! Please login.');
+      router.push('/login');
     } catch (err: any) {
-      setError(err.response?.data || 'Invalid email or password. Please register if you are new.');
+      setError(err.response?.data || 'Registration failed. Try again.');
     } finally {
       setLoading(false);
     }
@@ -50,8 +48,8 @@ export default function LoginPage() {
             ⚡
           </div>
           <div>
-            <h1 className="text-lg font-bold">API Tester Pro</h1>
-            <p className="text-xs text-slate-400">Sign in to your enterprise workspace</p>
+            <h1 className="text-lg font-bold">Create Account</h1>
+            <p className="text-xs text-slate-400">Join API Tester Pro workspace</p>
           </div>
         </div>
 
@@ -61,7 +59,22 @@ export default function LoginPage() {
           </div>
         )}
 
-        <form onSubmit={handleLogin} className="space-y-4">
+        <form onSubmit={handleRegister} className="space-y-4">
+          <div>
+            <label className="block text-xs text-slate-300 mb-1">Full Name</label>
+            <div className="relative">
+              <User size={15} className="absolute left-3 top-3 text-slate-500" />
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Jithu Saji"
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs text-white outline-none focus:border-indigo-500"
+                required
+              />
+            </div>
+          </div>
+
           <div>
             <label className="block text-xs text-slate-300 mb-1">Email Address</label>
             <div className="relative">
@@ -95,18 +108,18 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-lg text-xs flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-lg text-xs flex items-center justify-center gap-2"
           >
-            <span>{loading ? 'Signing in...' : 'Sign In'}</span>
+            <span>{loading ? 'Creating account...' : 'Sign Up'}</span>
             {!loading && <ArrowRight size={14} />}
           </button>
         </form>
 
         <div className="mt-6 text-center border-t border-slate-800 pt-4">
           <p className="text-xs text-slate-400">
-            Don't have an account?{' '}
-            <Link href="/register" className="text-indigo-400 hover:underline">
-              Sign Up
+            Already have an account?{' '}
+            <Link href="/login" className="text-indigo-400 hover:underline">
+              Sign In
             </Link>
           </p>
         </div>
