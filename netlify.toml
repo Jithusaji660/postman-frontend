@@ -2,5 +2,15 @@
   command = "npm run build"
   publish = ".next"
 
+[build.environment]
+  NEXT_PUBLIC_API_URL = "https://api-tester-backend-8yf1.onrender.com"
+
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
+# Render ബാക്കെൻഡിലേക്ക് API കോളുകൾ പ്രോക്സി ചെയ്യാൻ
+[[redirects]]
+  from = "/api/*"
+  to = "https://api-tester-backend-8yf1.onrender.com/api/:splat"
+  status = 200
+  force = true
